@@ -7,6 +7,7 @@ import com.example.userservicemorningbatch.models.User;
 import com.example.userservicemorningbatch.repositories.TokenRepository;
 import com.example.userservicemorningbatch.repositories.UserRepository;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.springframework.security.core.parameters.P;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -105,5 +106,15 @@ public class UserService {
         tokenRepository.save(token);
 
         return;
+    }
+
+    public User validateToken(String token) throws InvalidTokenException {
+        Optional<Token> optionalToken = tokenRepository.findByValueAndDeleted(token, false);
+
+        if (optionalToken.isEmpty()) {
+            throw new InvalidTokenException("Invalid token passed.");
+        }
+
+        return optionalToken.get().getUser();
     }
 }
