@@ -6,6 +6,7 @@ import com.example.userservicemorningbatch.exceptions.InvalidTokenException;
 import com.example.userservicemorningbatch.models.Token;
 import com.example.userservicemorningbatch.models.User;
 import com.example.userservicemorningbatch.services.UserService;
+import jakarta.ws.rs.Path;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -58,5 +59,11 @@ public class UserController {
     @PostMapping("/validate/{token}")
     public UserDto validateToken(@PathVariable String token) throws InvalidTokenException {
         return UserDto.from(userService.validateToken(token));
+    }
+
+    @GetMapping("/{id}")
+    public String getUserDetails(@PathVariable("id") Long userId) {
+        System.out.println("Received request for getUserDetails");
+        return "Hello from user with id: " + userId;
     }
 }
