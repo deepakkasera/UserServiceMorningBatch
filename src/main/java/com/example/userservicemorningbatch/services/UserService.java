@@ -1,12 +1,17 @@
 package com.example.userservicemorningbatch.services;
 
+import com.example.userservicemorningbatch.configs.KafkaProducerClient;
+import com.example.userservicemorningbatch.dtos.SendEmailDto;
 import com.example.userservicemorningbatch.exceptions.InvalidPasswordException;
 import com.example.userservicemorningbatch.exceptions.InvalidTokenException;
 import com.example.userservicemorningbatch.models.Token;
 import com.example.userservicemorningbatch.models.User;
 import com.example.userservicemorningbatch.repositories.TokenRepository;
 import com.example.userservicemorningbatch.repositories.UserRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.kafka.common.network.Send;
 import org.springframework.security.core.parameters.P;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -21,13 +26,19 @@ public class UserService {
     private UserRepository userRepository;
     private BCryptPasswordEncoder bCryptPasswordEncoder;
     private TokenRepository tokenRepository;
+    private KafkaProducerClient kafkaProducerClient;
+    private ObjectMapper objectMapper;
 
     UserService(UserRepository userRepository,
                 BCryptPasswordEncoder bCryptPasswordEncoder,
-                TokenRepository tokenRepository) {
+                TokenRepository tokenRepository,
+                KafkaProducerClient kafkaProducerClient,
+                ObjectMapper objectMapper) {
         this.userRepository = userRepository;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
         this.tokenRepository = tokenRepository;
+        this.kafkaProducerClient = kafkaProducerClient;
+        this.objectMapper = objectMapper;
     }
 
     public User signUp(String email, String password, String name) {
@@ -42,6 +53,19 @@ public class UserService {
         user.setEmail(email);
         user.setName(name);
         user.setHashedPassword(bCryptPasswordEncoder.encode(password));
+
+        //Once the signup is complete, send a message to Kafka for sending an email to the User.
+        SendEmailDto sendEmailDto = new SendEmailDto();
+        sendEmailDto.setTo(user.getEmail());
+        sendEmailDto.setFrom("admin@scaler.com");
+        sendEmailDto.setSubject("Welcome to Scaler");
+        sendEmailDto.setBody("Thanks for joining Scaler");
+
+        try {
+            kafkaProducerClient.sendMessage("sendEmail", objectMapper.writeValueAsString(sendEmailDto));
+        } catch (JsonProcessingException e) {
+            System.out.println("Something went wrong while sending a message to Kafka");
+        }
 
         return userRepository.save(user);
     }
